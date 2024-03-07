@@ -1,4 +1,4 @@
-# fiat-lux
+# fiat lux
 
 ## Problem
 Nowadays, motion detectors recognise movement quite reliably. Unfortunately, they do not differentiate between motion sources. The aim of this project is to control a light source only when both a movement is detected and the source is a person.
