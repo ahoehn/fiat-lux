@@ -13,3 +13,8 @@ Based on the pre-trained model imagenet (https://paperswithcode.com/dataset/imag
 
 ## Hardware setup
 The hardware used was the Raspberry Pi 5 with the Raspberry Pi Camera 3 NoIR and the RPI HC-SR501 IR sensor. The images were also saved on the SSD card to enable visual assessment and additional external verification outside of the Raspberry Pi.
+
+## Development
+### Installing tensor flow on Raspberry Pi
+https://pimylifeup.com/raspberry-pi-tensorflow-lite/
+
