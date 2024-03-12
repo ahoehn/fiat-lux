@@ -12,4 +12,4 @@ All infos about the LLVIP dataset can be found here: * ```https://bupt-ai-cz.git
     * ```visible```
       * ```test```
       * ```train```
-* Run prepare_dataset.py to create the dataset in the correct format
+* Run ```prepare_dataset.py``` to create the dataset in the correct format
