@@ -5,10 +5,10 @@ import xml.etree.ElementTree as ET
 def copy_jpg_for_keras_flow_from_directory_adjusted():
     base_path = os.path.join(os.getcwd(), 'raw_data')
     annotations_path = os.path.join(base_path, 'Annotations')
-    dataset_path = os.path.join(os.getcwd(), 'dataset')
+    dataset_path = os.path.join(os.getcwd(), '../dataset')
 
     # Subdirectory and category configuration
-    subdirs = ['infrared', 'visible']
+    subdirs = ['infrared']
     categories = ['train', 'test']
     classes = ['person', 'not-person']
 
@@ -21,7 +21,7 @@ def copy_jpg_for_keras_flow_from_directory_adjusted():
     for subdir in subdirs:
         for category in categories:
             for class_ in classes:
-                os.makedirs(os.path.join(dataset_path, subdir, category, class_), exist_ok=True)
+                os.makedirs(os.path.join(dataset_path, category, class_), exist_ok=True)
 
     for file in os.listdir(annotations_path):
         if file.endswith(".xml"):
@@ -43,7 +43,7 @@ def copy_jpg_for_keras_flow_from_directory_adjusted():
                 for category in categories:
                     source_jpg_path = os.path.join(base_path, subdir, category, jpg_filename)
                     if os.path.exists(source_jpg_path):
-                        target_jpg_path = os.path.join(dataset_path, subdir, category, target_class, jpg_filename)
+                        target_jpg_path = os.path.join(dataset_path, category, target_class, jpg_filename)
                         shutil.copy(source_jpg_path, target_jpg_path)
 
                         # Update counters

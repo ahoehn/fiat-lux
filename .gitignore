@@ -164,3 +164,4 @@ cython_debug/
 .iml
 /flir/raw_data/
 /flir/dataset/
+/dataset/
