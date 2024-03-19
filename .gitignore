@@ -162,3 +162,5 @@ cython_debug/
 /llvip/dataset/
 /.idea/
 .iml
+/flir/raw_data/
+/flir/dataset/
