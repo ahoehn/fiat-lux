@@ -58,11 +58,11 @@ def execution(file_path, source_dir, target_dir):
 # use the training data as train data and split it later in the python notebook into train and validation data
 file_path = 'raw_data/images_thermal_train/index.json'
 source_dir = 'raw_data/images_thermal_train/data'
-target_dir = '../dataset/train/not-person'
+target_dir = '../../dataset/train/not-person'
 execution(file_path, source_dir, target_dir)
 
-# use the validation data as test data (because no dedicated validation data is provided)
+# use the validation data as test data (because no dedicated test data is provided)
 file_path = 'raw_data/images_thermal_val/index.json'
 source_dir = 'raw_data/images_thermal_val/data'
-target_dir = '../dataset/test/not-person'
+target_dir = '../../dataset/test/not-person'
 execution(file_path, source_dir, target_dir)
