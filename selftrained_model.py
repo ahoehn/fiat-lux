@@ -32,6 +32,8 @@ model.add(MaxPooling2D(pool_size=(2,2)))
 
 
 model.add(Flatten())
+model.add(Dense(20))
+model.add(Activation('relu'))
 model.add(Dense(40))
 model.add(Activation('relu'))
 model.add(Dense(2))
@@ -46,7 +48,7 @@ model.summary()
 
 history = model.fit(X_train, y_train,
                     batch_size=32,  # Adjust based on your dataset size and memory constraints
-                    epochs=5,  # Adjust based on the desired number of training epochs
+                    epochs=50,  # Adjust based on the desired number of training epochs
                     validation_data=(X_val, y_val))
 
 print(history.history)
