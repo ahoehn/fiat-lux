@@ -162,5 +162,5 @@ cython_debug/
 /.idea/
 .iml
 /raw_data/flir/raw_data/
-/dataset/
 /raw_data/oxford-iiit-pet/raw_data/
+/data/

@@ -1,9 +1,28 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
-
 from sklearn.metrics import confusion_matrix, classification_report
+import pickle
 
+# Data file paths
+train_images_file = 'data/train_images.npy'
+val_images_file = 'data/val_images.npy'
+test_images_file = 'data/test_images.npy'
+train_labels_file = 'data/train_labels.pkl'
+val_labels_file = 'data/val_labels.pkl'
+test_labels_file = 'data/test_labels.pkl'
+
+def load_data_files():
+    X_train = np.load(train_images_file)
+    X_val = np.load(val_images_file)
+    X_test = np.load(test_images_file)
+    with open(train_labels_file, 'rb') as f:
+        y_train = pickle.load(f)
+    with open(val_labels_file, 'rb') as f:
+        y_val = pickle.load(f)
+    with open(test_labels_file, 'rb') as f:
+        y_test = pickle.load(f)
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
 # Define a function to print evaluation metrics
 def print_metrics(eval_result, metric_names):

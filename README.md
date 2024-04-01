@@ -18,30 +18,19 @@ The hardware used was the Raspberry Pi 5 with the Raspberry Pi Camera 3 NoIR and
 ### Installing tensor flow on Raspberry Pi
 https://pimylifeup.com/raspberry-pi-tensorflow-lite/
 
-# SETUP
-* All infos about the LLVIP dataset can be found here: * ```https://bupt-ai-cz.github.io/LLVIP/```
-## Preparation
-* Create a folder ```dataset```
-## Download LLVIP dataset
-* Create a folder ```llvip```
-* Create a subfolder ```raw_data``` in this folder
-* Download the dataset from ```https://github.com/bupt-ai-cz/LLVIP/blob/main/download_dataset.md```
-* Unzip to ```raw_data``` which should contain all the images and annotations in the following structure:
-    * ```raw_data```
-        * ```Annotations```
-        * ```infrared```
-            * ```test```
-            * ```train```
-        * ```visible```
-            * ```test```
-            * ```train```
-* Run ```prepare_dataset_llvipi.py``` to create the dataset in the correct format
+# DATA PREPROCESSING
+* LLVIP images
+  * 15k infrared images with persons of which the location in the image is annotated
+    * Extraction of the different persons (> 100x100 px) based on the annotations leads to 18k images in total
+  * transformation from infrared RGB to grayscale to reduce the number of channels
+* Oxford IIIT Pet Dataset
+  * 7345 RGB images of dogs and cats
+  * transformation from RGB to grayscale to reduce the number of channels
+* FLIR ADAS Dataset
+  * 12k infrared images of which the location of various items like persons, cars, signs, etc. in the image is annotated
+    * Extraction of the different cars (> 100x100 px) based on the 'car' annotations leads to 3.7k images in total 
+  * all images are provided in grayscale
 
-## Download the FLIR ADAS dataset
-* Create a folder ```flir```
-* Create a subfolder ```raw_data``` in this folder
-* Download the dataset from ```https://www.flir.com/oem/adas/adas-dataset-form/#anchor29```
-* Unzip to ```raw_data``` which should contain all the images and annotations in the following structure:
-    * ```raw_data/data``` (all jpgs from ```images_thermal_train/data```)
-    * ```index.json``` (from ```images_thermal_train```)
-* Run ```prepare_dataset_flir.py``` to create the dataset in the correct format
+* Randomly select the necessary number of images from the cars category to match the number of cats and dogs images.
+* Combine and shuffle the datasets to ensure random distribution.
+* Split the combined dataset into training, validation, and test sets maintaining the balance between classes.
