@@ -1,25 +1,23 @@
 import os
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input, decode_predictions
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
 from helper import print_metrics, plot_accuracy, plot_confusion_matrix
 
-# Load the VGG16 model pre-trained on ImageNet data, excluding the top layer
-base_model = VGG16(weights='imagenet', include_top=False)
+# Load the ResNet50 model pre-trained on ImageNet data, excluding the top layer
+base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
 
-# Freeze the layers of the base model
-for layer in base_model.layers:
-    layer.trainable = False
+# Freeze the base model
+base_model.trainable = False
 
-# Create a new top layer for the model
-x = base_model.output
-x = GlobalAveragePooling2D()(x)
-x = Dense(1024, activation='relu')(x)  # New FC layer, random init
-predictions = Dense(1, activation='sigmoid')(x)  # New softmax layer
+# Add custom layers on top for your specific task
+x = tf.keras.layers.GlobalAveragePooling2D()(base_model.output)
+x = tf.keras.layers.Dense(1024, activation='relu')(x)  # Example dense layer
+predictions = tf.keras.layers.Dense(1, activation='sigmoid')(x) # New softmax layer
 model = Model(inputs=base_model.input, outputs=predictions)
 
 # Compile the model
@@ -62,7 +60,7 @@ print_metrics(eval_result, model.metrics_names)
 plot_accuracy(history)
 
 # Save the model
-model.save('human-or-not-vgg16.keras')
+model.save('human-or-not-resnet.keras')
 
 # Plot confusion matrix
 predictions = model.predict(test_generator, verbose=1)

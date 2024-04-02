@@ -55,18 +55,18 @@ def plot_accuracy(history):
     plt.show()
 
 
-def plot_confusion_matrix(validation_generator, predictions):
+def plot_confusion_matrix(test_generator, predictions):
     # Compute confusion matrix
     title = 'Confusion matrix',
     cmap = plt.cm.Blues
     normalize = False
     # Get the true labels
-    true_classes = validation_generator.classes
+    true_classes = test_generator.classes
     predicted_classes = np.round(predictions).astype(int).flatten()  # Assuming binary classification
     cm = confusion_matrix(true_classes, predicted_classes)
-    classes = list(validation_generator.class_indices.keys())
+    classes = list(test_generator.class_indices.keys())
 
-    class_labels = list(validation_generator.class_indices.keys())
+    class_labels = list(test_generator.class_indices.keys())
 
     # Print classification report
     report = classification_report(true_classes, predicted_classes, target_names=class_labels)
