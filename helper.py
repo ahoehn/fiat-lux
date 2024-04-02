@@ -3,6 +3,7 @@ import numpy as np
 import itertools
 from sklearn.metrics import confusion_matrix, classification_report
 import pickle
+import scipy.stats as stats
 
 # Data file paths
 train_images_file = 'data/train_images.npy'
@@ -101,3 +102,10 @@ def plot_confusion_matrix(test_generator, predictions):
     plt.xlabel('Predicted label')
 
     plt.show()
+
+def wilson_confidence_interval(p_hat, n, confidence=0.95):
+    z = stats.norm.ppf((1 + confidence) / 2)  # for 95% confidence
+    denominator = 1 + z**2 / n
+    center = (p_hat + z**2 / (2 * n)) / denominator
+    margin = z * ((p_hat * (1 - p_hat) / n + z**2 / (4 * n**2)) ** 0.5) / denominator
+    return center - margin, center + margin
