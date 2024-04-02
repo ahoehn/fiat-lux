@@ -1,11 +1,11 @@
 from gpiozero import MotionSensor
-from gpiozero import PiCamera
+from picamera2 import PiCamera2
 from datetime import datetime
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
 from tensorflow.keras.models import load_model
 
 pir = MotionSensor(4)
-camera = PiCamera()
+camera = PiCamera2()
 model = load_model('human-or-not-vgg16.keras')
 
 while True:
