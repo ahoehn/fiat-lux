@@ -4,9 +4,10 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.utils import to_categorical
 import json
 import helper
+from tensorflow.keras.utils import to_categorical
+
 
 # Function to parse XML annotation for bounding box
 def parse_annotation(annotation_path):
@@ -159,7 +160,7 @@ with tf.device('/cpu:0'):
         sampled_indices = indices[:sample_size]
         return images[sampled_indices], labels[sampled_indices]
 
-    # Sample images from each dataset
+    # Sample images from each dataset to ensure balanced classes (same amount of images for each class)
     sample_size = len(flir_images) # it's the smallest dataset
     images_llvip_sample, labels_llvip_sample = sample_images_and_labels(llvip_images, llvip_labels, sample_size)
     images_iiit_sample, labels_iiit_sample = sample_images_and_labels(iiit_images, iiit_labels, sample_size)
@@ -178,10 +179,10 @@ with tf.device('/cpu:0'):
     images_shuffled = images_combined[indices]
     labels_shuffled = labels_combined[indices]
 
-    # Split the data into training (70%), validation (15%), and test (15%) sets
-    train_ratio = 0.70
-    validation_ratio = 0.15
-    test_ratio = 0.15
+    # Split the data into training, validation and test sets
+    train_ratio = 0.60
+    validation_ratio = 0.2
+    test_ratio = 0.2
 
     # First, split to get the training and the temp (validation+test) sets
     X_train, images_temp, y_train, labels_temp = train_test_split(
@@ -194,9 +195,9 @@ with tf.device('/cpu:0'):
     )
 
     # Convert labels to categorical for model training
-    y_train = to_categorical(y_train, num_classes=2)
-    y_val = to_categorical(y_val, num_classes=2)
-    y_test = to_categorical(y_test, num_classes=2)
+    y_train_one_hot_encoded = to_categorical(y_train, num_classes=2)
+    y_val_one_hot_encoded = to_categorical(y_val, num_classes=2)
+    y_test_one_hot_encoded = to_categorical(y_test, num_classes=2)
 
     # At this point, X_train, X_val, X_test, y_train, y_val, and y_test are ready for training, validating, and testing your model.
     print("Training images: " + str(len(X_train)))
@@ -210,8 +211,11 @@ with tf.device('/cpu:0'):
     train_labels_file = helper.train_labels_file
     val_labels_file = helper.val_labels_file
     test_labels_file = helper.test_labels_file
+    train_labels_file_one_hot_encoded = helper.train_labels_file_one_hot_encoded
+    val_labels_file_one_hot_encoded = helper.val_labels_file_one_hot_encoded
+    test_labels_file_one_hot_encoded = helper.test_labels_file_one_hot_encoded
 
-    for file in [train_images_file, val_images_file, test_images_file, train_labels_file, val_labels_file, test_labels_file]:
+    for file in [train_images_file, val_images_file, test_images_file, train_labels_file, val_labels_file, test_labels_file, train_labels_file_one_hot_encoded, val_labels_file_one_hot_encoded, test_labels_file_one_hot_encoded]:
         if os.path.exists(file):
             os.remove(file)
 
@@ -224,3 +228,9 @@ with tf.device('/cpu:0'):
         pickle.dump(y_val, f)
     with open(test_labels_file, 'wb') as f:
         pickle.dump(y_test, f)
+    with open(train_labels_file_one_hot_encoded, 'wb') as f:
+        pickle.dump(y_train_one_hot_encoded, f)
+    with open(val_labels_file_one_hot_encoded, 'wb') as f:
+        pickle.dump(y_val_one_hot_encoded, f)
+    with open(test_labels_file_one_hot_encoded, 'wb') as f:
+        pickle.dump(y_test_one_hot_encoded, f)
