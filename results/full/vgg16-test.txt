@@ -1,0 +1,4 @@
+Evaluate
+========
+loss: 0.0
+compile_metrics: 1.0
