@@ -14,7 +14,7 @@ base_model.trainable = False
 # Add custom layers on top of the base model
 x = base_model.output
 x = Flatten()(x)
-x = Dense(1024, activation='relu')(x)
+x = Dense(100, activation='relu')(x)
 predictions = Dense(1, activation='sigmoid')(x)  # sigmoid for binary classification
 
 # Define the full model
