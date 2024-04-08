@@ -162,4 +162,5 @@ cython_debug/
 /.idea/
 .iml
 /data/
-/results/*.keras
+/results/full/*.keras
+/results/cropped/*.keras
