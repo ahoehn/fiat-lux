@@ -6,11 +6,17 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import json
 import helper
-from tensorflow.keras.utils import to_categorical
 
+def augment_image_left_right(image):
+    image = tf.image.random_flip_left_right(image)
+    return image
 
-# Function to parse XML annotation for bounding box
-def parse_annotation(annotation_path):
+def augment_image_up_down(image):
+    image = tf.image.random_flip_up_down(image)
+    return image
+
+# Function to parse XML annotation and return bounding boxes
+def parse_llvip_annotation_for_boxes(annotation_path):
     tree = ET.parse(annotation_path)
     root = tree.getroot()
     boxes = []
@@ -21,6 +27,22 @@ def parse_annotation(annotation_path):
                       int(bbox.find('xmax').text),
                       int(bbox.find('ymax').text)))
     return boxes
+
+def parse_llvip_annotation_count_boxes(annotation_path):
+    tree = ET.parse(annotation_path)
+    root = tree.getroot()
+    valid_boxes = 0
+    for obj in root.findall('object'):
+        bbox = obj.find('bndbox')
+        xmin, ymin, xmax, ymax = (
+            int(bbox.find('xmin').text),
+            int(bbox.find('ymin').text),
+            int(bbox.find('xmax').text),
+            int(bbox.find('ymax').text)
+        )
+        if xmax - xmin >= 80 and ymax - ymin >= 270:  # Check box size
+            valid_boxes += 1
+    return valid_boxes
 
 # Function to load and crop images based on bounding box
 def load_and_crop_image(image_path, box, small_size_counter, padding=50):
@@ -57,7 +79,7 @@ def load_and_crop_image(image_path, box, small_size_counter, padding=50):
     return image_resized.numpy()  # Return the processed image as a numpy array
 
 # Function to prepare dataset for 'person' class
-def prepare_llvip_dataset(base_path, annotation_folder, image_folders):
+def prepare_llvip_dataset_cropped(base_path, annotation_folder, image_folders):
     images, labels = [], []
     small_size_counter = {'count': 0}
 
@@ -66,7 +88,7 @@ def prepare_llvip_dataset(base_path, annotation_folder, image_folders):
     for index, annotation_file in enumerate(annotation_files):
         filename = annotation_file.replace('.xml', '.jpg')
         annotation_path = os.path.join(annotations_path, annotation_file)
-        boxes = parse_annotation(annotation_path)
+        boxes = parse_llvip_annotation_for_boxes(annotation_path)
 
         for folder in image_folders:
             image_path = os.path.join(base_path, folder, filename)
@@ -80,6 +102,46 @@ def prepare_llvip_dataset(base_path, annotation_folder, image_folders):
 
     print("Number of LLVIP images where size is too small: " + str(small_size_counter.get('count')))
     return np.array(images), np.array(labels)
+
+def prepare_llvip_dataset_full(base_path, annotation_folder, image_folders):
+    images = []
+    labels = []
+    filenames = []
+    small_size_counter = {'count': 0}
+
+    annotations_path = os.path.join(base_path, annotation_folder)
+    annotation_files = os.listdir(annotations_path)
+    for annotation_file in annotation_files:
+        filename = annotation_file.replace('.xml', '.jpg')
+        annotation_path = os.path.join(annotations_path, annotation_file)
+        person_count = parse_llvip_annotation_count_boxes(annotation_path)
+
+        if person_count >= 2:
+            for folder in image_folders:
+                image_path = os.path.join(base_path, folder, filename)
+                if os.path.exists(image_path):
+                    image_raw = tf.io.read_file(image_path)
+                    image = tf.image.decode_jpeg(image_raw, channels=1)
+                    # Ensure the image has 3 dimensions [height, width, channels]
+                    if len(image.shape) < 3:
+                        image = tf.expand_dims(image, -1)
+                    image_resized = tf.image.resize(image, (224, 224))
+                    images.append(image_resized.numpy())
+                    labels.append(1)  # Label for 'person'
+                    # Augment and resize the images
+                    augmented_image_lr = tf.image.random_flip_left_right(image)
+                    augmented_image_ud = tf.image.random_flip_up_down(image)
+                    images.append(tf.image.resize(augmented_image_lr, (224, 224)).numpy())
+                    labels.append(1)
+                    images.append(tf.image.resize(augmented_image_ud, (224, 224)).numpy())
+                    labels.append(1)
+                    filenames.append(filename)
+                    break
+        else:
+            small_size_counter['count'] += 1
+
+    print("Images with fewer than 2 persons or smaller dimensions: " + str(small_size_counter['count']))
+    return np.array(images), np.array(labels), filenames[:5]  # Return first 5 filenames
 
 # Function to prepare dataset for 'non-person' class
 def prepare_iiit_dataset(base_path, list_paths, image_folder):
@@ -128,15 +190,191 @@ def prepare_flir_dataset(folders):
     print("Number of FLIR images where size is too small: " + str(small_size_counter.get('count')))
     return images_features, labels
 
-# Example usage
+# Function to randomly sample images and labels from a dataset
+def sample_images_and_labels(images, labels, sample_size):
+        # Generate random indices for sampling
+        indices = np.arange(images.shape[0])
+        np.random.shuffle(indices)
+
+        # Select the specified number of random samples
+        sampled_indices = indices[:sample_size]
+        return images[sampled_indices], labels[sampled_indices]
+
+def create_dataset_cropped():
+        # Sample images from each dataset to ensure balanced classes (same amount of images for each class)
+        sample_size = len(flir_images) # it's the smallest dataset
+        images_llvip_cropped_sample, labels_llvip_cropped_sample = sample_images_and_labels(llvip_images_cropped, llvip_labels_cropped, sample_size)
+        images_iiit_sample, labels_iiit_sample = sample_images_and_labels(iiit_images, iiit_labels, sample_size)
+        images_flir_sample, labels_flir_sample = flir_images, flir_labels # use all flir images
+        print("Sampled LLVIP cropped images: " + str(len(images_llvip_cropped_sample)))
+        print("Sampled IIIT images: " + str(len(images_iiit_sample)))
+        print("Sampled FLIR images: " + str(len(images_flir_sample)))
+
+        # Split each datasest into training, validation and test sets
+        train_ratio = 0.60
+        validation_ratio = 0.2
+        test_ratio = 0.2
+
+        # First, split to get the training and the temp (validation+test) sets
+        X_train_llvip, images_temp, y_train_llvip, labels_temp = train_test_split(
+            images_llvip_cropped_sample, labels_llvip_cropped_sample, test_size=(1 - train_ratio), stratify=labels_llvip_cropped_sample
+        )
+
+        # Then split the temp set into validation and test sets
+        X_val_llvip, X_test_llvip, y_val_llvip, y_test_llvip = train_test_split(
+            images_temp, labels_temp, test_size=test_ratio/(test_ratio + validation_ratio), stratify=labels_temp
+        )
+
+        # First, split to get the training and the temp (validation+test) sets
+        X_train_flir, images_temp, y_train_flir, labels_temp = train_test_split(
+            images_flir_sample, labels_flir_sample, test_size=(1 - train_ratio), stratify=labels_flir_sample
+        )
+
+        # Then split the temp set into validation and test sets
+        X_val_flir, X_test_flir, y_val_flir, y_test_flir = train_test_split(
+            images_temp, labels_temp, test_size=test_ratio/(test_ratio + validation_ratio), stratify=labels_temp
+        )
+
+        # First, split to get the training and the temp (validation+test) sets
+        X_train_iiit, images_temp, y_train_iiit, labels_temp = train_test_split(
+            images_iiit_sample, labels_iiit_sample, test_size=(1 - train_ratio), stratify=labels_iiit_sample
+        )
+
+        # Then split the temp set into validation and test sets
+        X_val_iiit, X_test_iiit, y_val_iiit, y_test_iiit = train_test_split(
+            images_temp, labels_temp, test_size=test_ratio/(test_ratio + validation_ratio), stratify=labels_temp
+        )
+
+        # Combine the sampled data
+        X_train = np.concatenate((X_train_llvip, X_train_iiit, X_train_flir))
+        y_train = np.concatenate((y_train_llvip, y_train_iiit, y_train_flir))
+        X_val = np.concatenate((X_val_llvip, X_val_iiit, X_val_flir))
+        y_val = np.concatenate((y_val_llvip, y_val_iiit, y_val_flir))
+        X_test = np.concatenate((X_test_llvip, X_test_iiit, X_test_flir))
+        y_test = np.concatenate((y_test_llvip, y_test_iiit, y_test_flir))
+
+
+        # At this point, X_train, X_val, X_test, y_train, y_val, and y_test are ready for training, validating, and testing your model.
+        print("Training images cropped: " + str(len(X_train)))
+        print("Validation images cropped: " + str(len(X_val)))
+        print("Test images cropped: " + str(len(X_test)))
+
+        # File paths
+        train_images_cropped_file = helper.train_images_cropped_file
+        val_images_cropped_file = helper.val_images_cropped_file
+        test_images_cropped_file = helper.test_images_cropped_file
+        train_labels_cropped_file = helper.train_labels_cropped_file
+        val_labels_cropped_file = helper.val_labels_cropped_file
+        test_labels_cropped_file = helper.test_labels_cropped_file
+
+        for file in [train_images_cropped_file, val_images_cropped_file, test_images_cropped_file,
+                     train_labels_cropped_file, val_labels_cropped_file, test_labels_cropped_file]:
+            if os.path.exists(file):
+                os.remove(file)
+
+        np.save(train_images_cropped_file, X_train)
+        np.save(val_images_cropped_file, X_val)
+        np.save(test_images_cropped_file, X_test)
+        with open(train_labels_cropped_file, 'wb') as f:
+            pickle.dump(y_train, f)
+        with open(val_labels_cropped_file, 'wb') as f:
+            pickle.dump(y_val, f)
+        with open(test_labels_cropped_file, 'wb') as f:
+            pickle.dump(y_test, f)
+
+def create_dataset_full():
+    # Sample images from each dataset to ensure balanced classes (same amount of images for each class)
+    sample_size = len(llvip_images_full) # it's the smallest dataset
+    images_llvip_full_sample, labels_llvip_full_sample = llvip_images_full, llvip_labels_full
+    images_iiit_sample, labels_iiit_sample = sample_images_and_labels(iiit_images, iiit_labels, sample_size)
+    images_flir_sample, labels_flir_sample = flir_images, flir_labels
+    print("Sampled LLVIP full images: " + str(len(images_llvip_full_sample)))
+    print("Sampled IIIT images: " + str(len(images_iiit_sample)))
+    print("Sampled FLIR images: " + str(len(images_flir_sample)))
+
+    # Split each datasest into training, validation and test sets
+    train_ratio = 0.60
+    validation_ratio = 0.2
+    test_ratio = 0.2
+
+    # First, split to get the training and the temp (validation+test) sets
+    X_train_llvip, images_temp, y_train_llvip, labels_temp = train_test_split(
+       images_llvip_full_sample, labels_llvip_full_sample, test_size=(1 - train_ratio), stratify=labels_llvip_full_sample
+    )
+
+    # Then split the temp set into validation and test sets
+    X_val_llvip, X_test_llvip, y_val_llvip, y_test_llvip = train_test_split(
+       images_temp, labels_temp, test_size=test_ratio/(test_ratio + validation_ratio), stratify=labels_temp
+    )
+
+    # First, split to get the training and the temp (validation+test) sets
+    X_train_flir, images_temp, y_train_flir, labels_temp = train_test_split(
+       images_flir_sample, labels_flir_sample, test_size=(1 - train_ratio), stratify=labels_flir_sample
+    )
+
+    # Then split the temp set into validation and test sets
+    X_val_flir, X_test_flir, y_val_flir, y_test_flir = train_test_split(
+       images_temp, labels_temp, test_size=test_ratio/(test_ratio + validation_ratio), stratify=labels_temp
+    )
+
+    # First, split to get the training and the temp (validation+test) sets
+    X_train_iiit, images_temp, y_train_iiit, labels_temp = train_test_split(
+       images_iiit_sample, labels_iiit_sample, test_size=(1 - train_ratio), stratify=labels_iiit_sample
+    )
+
+    # Then split the temp set into validation and test sets
+    X_val_iiit, X_test_iiit, y_val_iiit, y_test_iiit = train_test_split(
+       images_temp, labels_temp, test_size=test_ratio/(test_ratio + validation_ratio), stratify=labels_temp
+    )
+
+    # Combine the sampled data
+    X_train = np.concatenate((X_train_llvip, X_train_iiit, X_train_flir))
+    y_train = np.concatenate((y_train_llvip, y_train_iiit, y_train_flir))
+    X_val = np.concatenate((X_val_llvip, X_val_iiit, X_val_flir))
+    y_val = np.concatenate((y_val_llvip, y_val_iiit, y_val_flir))
+    X_test = np.concatenate((X_test_llvip, X_test_iiit, X_test_flir))
+    y_test = np.concatenate((y_test_llvip, y_test_iiit, y_test_flir))
+
+    # At this point, X_train, X_val, X_test, y_train, y_val, and y_test are ready for training, validating, and testing your model.
+    print("Training images full: " + str(len(X_train)))
+    print("Validation images full: " + str(len(X_val)))
+    print("Test images full: " + str(len(X_test)))
+
+    # File paths
+    train_images_full_file = helper.train_images_full_file
+    val_images_full_file = helper.val_images_full_file
+    test_images_full_file = helper.test_images_full_file
+    train_labels_full_file = helper.train_labels_full_file
+    val_labels_full_file = helper.val_labels_full_file
+    test_labels_full_file = helper.test_labels_full_file
+
+    for file in [train_images_full_file, val_images_full_file, test_images_full_file,
+                 train_labels_full_file, val_labels_full_file, test_labels_full_file]:
+        if os.path.exists(file):
+            os.remove(file)
+
+    np.save(train_images_full_file, X_train)
+    np.save(val_images_full_file, X_val)
+    np.save(test_images_full_file, X_test)
+    with open(train_labels_full_file, 'wb') as f:
+        pickle.dump(y_train, f)
+    with open(val_labels_full_file, 'wb') as f:
+        pickle.dump(y_val, f)
+    with open(test_labels_full_file, 'wb') as f:
+        pickle.dump(y_test, f)
+
+
 with tf.device('/cpu:0'):
 
     # LLVIP data labelled as 'person'
     base_path_llvip = 'raw_data/llvip/raw_data'
     image_folders_llvip = ['grayscale/train', 'grayscale/test']
     annotation_folder_llvip = 'Annotations'
-    llvip_images, llvip_labels = prepare_llvip_dataset(base_path_llvip, annotation_folder_llvip, image_folders_llvip)
-    print('LLVIP images: ' + str(len(llvip_images)))
+    llvip_images_cropped, llvip_labels_cropped = prepare_llvip_dataset_cropped(base_path_llvip, annotation_folder_llvip, image_folders_llvip)
+    print('LLVIP cropped images: ' + str(len(llvip_images_cropped)))
+
+    llvip_images_full, llvip_labels_full, first_five_filenames = prepare_llvip_dataset_full(base_path_llvip, annotation_folder_llvip, image_folders_llvip)
+    print('LLVIP full images: ' + str(len(llvip_images_full)))
 
     # Oxford IIIT data (cats and pets) labelled as 'non-person'
     base_path_iiit = 'raw_data/oxford-iiit-pet/raw_data'
@@ -150,87 +388,5 @@ with tf.device('/cpu:0'):
     flir_images, flir_labels = prepare_flir_dataset(folders)
     print('FLIR images: ' + str(len(flir_images)))
 
-    # Function to randomly sample images and labels from a dataset
-    def sample_images_and_labels(images, labels, sample_size):
-        # Generate random indices for sampling
-        indices = np.arange(images.shape[0])
-        np.random.shuffle(indices)
-
-        # Select the specified number of random samples
-        sampled_indices = indices[:sample_size]
-        return images[sampled_indices], labels[sampled_indices]
-
-    # Sample images from each dataset to ensure balanced classes (same amount of images for each class)
-    sample_size = len(flir_images) # it's the smallest dataset
-    images_llvip_sample, labels_llvip_sample = sample_images_and_labels(llvip_images, llvip_labels, sample_size)
-    images_iiit_sample, labels_iiit_sample = sample_images_and_labels(iiit_images, iiit_labels, sample_size)
-    images_flir_sample, labels_flir_sample = flir_images, flir_labels # use all flir images
-    print("Sampled LLVIP images: " + str(len(images_llvip_sample)))
-    print("Sampled IIIT images: " + str(len(images_iiit_sample)))
-    print("Sampled FLIR images: " + str(len(images_flir_sample)))
-
-    # Combine the sampled data
-    images_combined = np.concatenate((images_llvip_sample, images_iiit_sample, images_flir_sample))
-    labels_combined = np.concatenate((labels_llvip_sample, labels_iiit_sample, labels_flir_sample))
-
-    # Shuffle the combined dataset
-    indices = np.arange(images_combined.shape[0])
-    np.random.shuffle(indices)
-    images_shuffled = images_combined[indices]
-    labels_shuffled = labels_combined[indices]
-
-    # Split the data into training, validation and test sets
-    train_ratio = 0.60
-    validation_ratio = 0.2
-    test_ratio = 0.2
-
-    # First, split to get the training and the temp (validation+test) sets
-    X_train, images_temp, y_train, labels_temp = train_test_split(
-        images_shuffled, labels_shuffled, test_size=(1 - train_ratio), stratify=labels_shuffled
-    )
-
-    # Then split the temp set into validation and test sets
-    X_val, X_test, y_val, y_test = train_test_split(
-        images_temp, labels_temp, test_size=test_ratio/(test_ratio + validation_ratio), stratify=labels_temp
-    )
-
-    # Convert labels to categorical for model training
-    y_train_one_hot_encoded = to_categorical(y_train, num_classes=2)
-    y_val_one_hot_encoded = to_categorical(y_val, num_classes=2)
-    y_test_one_hot_encoded = to_categorical(y_test, num_classes=2)
-
-    # At this point, X_train, X_val, X_test, y_train, y_val, and y_test are ready for training, validating, and testing your model.
-    print("Training images: " + str(len(X_train)))
-    print("Validation images: " + str(len(X_val)))
-    print("Test images: " + str(len(X_test)))
-
-    # File paths
-    train_images_file = helper.train_images_file
-    val_images_file = helper.val_images_file
-    test_images_file = helper.test_images_file
-    train_labels_file = helper.train_labels_file
-    val_labels_file = helper.val_labels_file
-    test_labels_file = helper.test_labels_file
-    train_labels_file_one_hot_encoded = helper.train_labels_file_one_hot_encoded
-    val_labels_file_one_hot_encoded = helper.val_labels_file_one_hot_encoded
-    test_labels_file_one_hot_encoded = helper.test_labels_file_one_hot_encoded
-
-    for file in [train_images_file, val_images_file, test_images_file, train_labels_file, val_labels_file, test_labels_file, train_labels_file_one_hot_encoded, val_labels_file_one_hot_encoded, test_labels_file_one_hot_encoded]:
-        if os.path.exists(file):
-            os.remove(file)
-
-    np.save(train_images_file, X_train)
-    np.save(val_images_file, X_val)
-    np.save(test_images_file, X_test)
-    with open(train_labels_file, 'wb') as f:
-        pickle.dump(y_train, f)
-    with open(val_labels_file, 'wb') as f:
-        pickle.dump(y_val, f)
-    with open(test_labels_file, 'wb') as f:
-        pickle.dump(y_test, f)
-    with open(train_labels_file_one_hot_encoded, 'wb') as f:
-        pickle.dump(y_train_one_hot_encoded, f)
-    with open(val_labels_file_one_hot_encoded, 'wb') as f:
-        pickle.dump(y_val_one_hot_encoded, f)
-    with open(test_labels_file_one_hot_encoded, 'wb') as f:
-        pickle.dump(y_test_one_hot_encoded, f)
+    create_dataset_cropped()
+    create_dataset_full()

@@ -1,45 +1,55 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import itertools
 from sklearn.metrics import confusion_matrix, classification_report
 import pickle
 import scipy.stats as stats
 import seaborn as sns
 
 # Data file paths
-train_images_file = 'data/train_images.npy'
-val_images_file = 'data/val_images.npy'
-test_images_file = 'data/test_images.npy'
-train_labels_file = 'data/train_labels.pkl'
-val_labels_file = 'data/val_labels.pkl'
-test_labels_file = 'data/test_labels.pkl'
-train_labels_file_one_hot_encoded = 'data/train_labels_one_hot_encoded.pkl'
-val_labels_file_one_hot_encoded = 'data/val_labels_one_hot_encoded.pkl'
-test_labels_file_one_hot_encoded = 'data/test_labels_one_hot_encoded.pkl'
+train_images_cropped_file = 'data/train_images_cropped.npy'
+val_images_cropped_file = 'data/val_images_cropped.npy'
+test_images_cropped_file = 'data/test_images_cropped.npy'
+train_labels_cropped_file = 'data/train_labels_cropped.pkl'
+val_labels_cropped_file = 'data/val_labels_cropped.pkl'
+test_labels_cropped_file = 'data/test_labels_cropped.pkl'
+train_images_full_file = 'data/train_images_full.npy'
+val_images_full_file = 'data/val_images_full.npy'
+test_images_full_file = 'data/test_images_full.npy'
+train_labels_full_file = 'data/train_labels_full.pkl'
+val_labels_full_file = 'data/val_labels_full.pkl'
+test_labels_full_file = 'data/test_labels_full.pkl'
+prediction_images_file_person = 'data/prediction_images_person.npy'
+prediction_labels_file_person = 'data/prediction_labels_person.pkl'
 
-def load_data_files():
-    X_train = np.load(train_images_file)
-    X_val = np.load(val_images_file)
-    X_test = np.load(test_images_file)
-    with open(train_labels_file, 'rb') as f:
+def load_data_files_cropped():
+    X_train = np.load(train_images_cropped_file)
+    X_val = np.load(val_images_cropped_file)
+    X_test = np.load(test_images_cropped_file)
+    with open(train_labels_cropped_file, 'rb') as f:
         y_train = pickle.load(f)
-    with open(val_labels_file, 'rb') as f:
+    with open(val_labels_cropped_file, 'rb') as f:
         y_val = pickle.load(f)
-    with open(test_labels_file, 'rb') as f:
+    with open(test_labels_cropped_file, 'rb') as f:
         y_test = pickle.load(f)
     return X_train, X_val, X_test, y_train, y_val, y_test
 
-def load_data_files_one_hot_encoded():
-    X_train = np.load(train_images_file)
-    X_val = np.load(val_images_file)
-    X_test = np.load(test_images_file)
-    with open(train_labels_file_one_hot_encoded, 'rb') as f:
-        y_train_one_hot_encoded = pickle.load(f)
-    with open(val_labels_file_one_hot_encoded, 'rb') as f:
-        y_val_one_hot_encoded = pickle.load(f)
-    with open(test_labels_file_one_hot_encoded, 'rb') as f:
-        y_test_one_hot_encoded = pickle.load(f)
-    return X_train, X_val, X_test, y_train_one_hot_encoded, y_val_one_hot_encoded, y_test_one_hot_encoded
+def load_data_files_full():
+    X_train = np.load(train_images_full_file)
+    X_val = np.load(val_images_full_file)
+    X_test = np.load(test_images_full_file)
+    with open(train_labels_full_file, 'rb') as f:
+        y_train = pickle.load(f)
+    with open(val_labels_full_file, 'rb') as f:
+        y_val = pickle.load(f)
+    with open(test_labels_full_file, 'rb') as f:
+        y_test = pickle.load(f)
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
+def load_data_files_prediction():
+    X_prediction = np.load(prediction_images_file_person)
+    with open(prediction_labels_file_person, 'rb') as f:
+        y_prediction = pickle.load(f)
+    return X_prediction, y_prediction
 
 # Define a function to print evaluation metrics
 def print_metrics(eval_result, metric_names):

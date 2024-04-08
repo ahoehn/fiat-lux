@@ -1,12 +1,12 @@
 from keras.src.layers import Dropout
-from helper import print_metrics, plot_accuracy, load_data_files
+from helper import print_metrics, plot_accuracy, load_data_files_cropped
 from tensorflow.keras.layers import MaxPooling2D, Flatten, Dense, Convolution2D, Activation, Input, BatchNormalization
 from tensorflow.keras.models import Sequential
 import matplotlib.pyplot as plt
 plt.style.use('default')
 
 # Load data files
-X_train, X_val, X_test, y_train, y_val, y_test = load_data_files()
+X_train, X_val, X_test, y_train, y_val, y_test = load_data_files_cropped()
 
 model = Sequential()
 model.add(Convolution2D(8,kernel_size=(3,3),padding="same", activation = 'relu',input_shape=(224,224,1)))
@@ -35,7 +35,7 @@ history = model.fit(X_train, y_train,
                     validation_data=(X_val, y_val))
 
 # Save the model
-model.save('results/selftrained.keras')
+model.save('results/cropped/selftrained.keras')
 
 # Plot the accuracy
 plot_accuracy(history)

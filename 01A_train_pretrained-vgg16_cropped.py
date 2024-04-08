@@ -3,7 +3,7 @@ from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.models import Model
 
-from helper import print_metrics, plot_accuracy, load_data_files
+from helper import print_metrics, plot_accuracy, load_data_files_cropped
 
 # Load the VGG16 model pre-trained on ImageNet data, excluding the top layer
 base_model = VGG16(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
@@ -24,7 +24,7 @@ model = Model(inputs=base_model.input, outputs=predictions)
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 # Load the data
-X_train, X_val, X_test, y_train, y_val, y_test = load_data_files()
+X_train, X_val, X_test, y_train, y_val, y_test = load_data_files_cropped()
 
 # Replicate grayscale images to have three channels to fit VGG model
 X_train = np.repeat(X_train, 3, axis=-1)
@@ -38,7 +38,7 @@ history = model.fit(X_train, y_train,
                     validation_data=(X_val, y_val))
 
 # Save the model
-model.save('results/vgg16.keras')
+model.save('results/cropped/vgg16.keras')
 
 # Plot the accuracy
 plot_accuracy(history)
